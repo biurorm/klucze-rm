@@ -1,0 +1,152 @@
+/* RM NIERUCHOMOŚCI, Klucze, style */
+
+:root {
+  --brand: #094d47;
+  --brand-light: #0f6a62;
+  --brand-soft: #eef2f1;
+  --bg: #f5f5f4;
+  --card: #ffffff;
+  --text: #1c1917;
+  --muted: #78716c;
+  --border: #e7e5e4;
+  --ok: #15803d;
+  --ok-soft: #e7f5ec;
+  --out: #c2410c;
+  --out-soft: #fff1e6;
+  --late: #dc2626;
+  --late-soft: #fdecec;
+  --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+[hidden] { display: none !important; }
+
+html, body {
+  margin: 0; padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 16px; background: var(--bg); color: var(--text); line-height: 1.45; min-height: 100vh;
+}
+.app { max-width: 900px; margin: 0 auto; padding-bottom: 60px; }
+
+header {
+  background: var(--brand); color: #fff;
+  padding-top: max(14px, env(safe-area-inset-top, 14px)); padding-bottom: 14px;
+  padding-left: max(16px, env(safe-area-inset-left, 16px)); padding-right: max(16px, env(safe-area-inset-right, 16px));
+  position: sticky; top: 0; z-index: 20; box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+}
+.header-left, .header-right { display: flex; align-items: center; gap: 10px; }
+.header-logo { height: 30px; width: auto; }
+.subtitle { font-size: 15px; font-weight: 600; }
+.wersja { font-size: 11px; background: rgba(255,255,255,.18); padding: 2px 8px; border-radius: 10px; }
+.icon-btn { background: none; border: 0; color: #fff; font-size: 22px; cursor: pointer; padding: 4px 8px; line-height: 1; }
+.icon-btn.dark { color: var(--muted); font-size: 22px; }
+.banner { background: #fef3c7; color: #78350f; padding: 8px 16px; font-size: 13px; }
+
+.tabs { display: flex; gap: 6px; padding: 10px 12px; background: var(--bg); position: sticky; top: 58px; z-index: 15; }
+.tabs button { flex: 1; border: 1px solid var(--border); background: var(--card); color: var(--text); padding: 10px 6px; border-radius: 12px; font-size: 15px; font-weight: 600; cursor: pointer; }
+.tabs button.on { background: var(--brand); border-color: var(--brand); color: #fff; }
+
+.screen { padding: 0 12px; }
+.card { background: var(--card); border-radius: 14px; box-shadow: var(--shadow); padding: 14px; margin: 0 0 12px; }
+.card-title { font-weight: 700; font-size: 17px; margin-bottom: 6px; }
+.muted { color: var(--muted); }
+.small { font-size: 13px; }
+.err { color: var(--late); font-size: 14px; margin-top: 8px; }
+.row-between { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+label { display: block; font-size: 13px; color: var(--muted); margin: 0 0 10px; }
+input[type=text], input[type=email], input[type=password], input[type=date], input[type=number], input[type=tel], input[type=search] {
+  display: block; width: 100%; margin-top: 4px; padding: 11px 12px; font-size: 16px; font-family: inherit;
+  border: 1px solid var(--border); border-radius: 10px; background: #fff; color: var(--text);
+}
+input:focus { outline: 2px solid var(--brand-light); outline-offset: -1px; border-color: transparent; }
+#szukaj { margin: 0 0 10px; }
+
+.btn { display: block; width: 100%; border: 0; border-radius: 12px; padding: 12px; font-size: 16px; font-weight: 600; cursor: pointer; font-family: inherit; margin-top: 8px; }
+.btn-main { background: var(--brand); color: #fff; }
+.btn-main:disabled { opacity: .5; }
+.btn-ghost { background: var(--brand-soft); color: var(--brand); }
+.btn-ok { background: var(--ok); color: #fff; }
+.btn-big { padding: 16px; font-size: 18px; }
+.btn-red { background: none; color: var(--late); border: 1px solid var(--late-soft); }
+.link { background: none; border: 0; color: var(--brand); font-size: 14px; cursor: pointer; text-decoration: underline; padding: 0; font-family: inherit; }
+
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 10px; }
+.chip { border: 1px solid var(--border); background: #fff; border-radius: 18px; padding: 8px 14px; font-size: 15px; cursor: pointer; font-family: inherit; color: var(--text); }
+.chip.on { background: var(--brand); color: #fff; border-color: var(--brand); }
+
+/* MOJE KLUCZE */
+.moje { background: var(--out-soft); border: 1px solid #fed7aa; border-radius: 14px; padding: 12px 14px; margin-bottom: 12px; }
+.moje-tytul { font-weight: 700; margin-bottom: 6px; }
+.moje-wiersz { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 0; border-top: 1px solid #fde2c8; }
+.moje-wiersz:first-of-type { border-top: 0; }
+.moje-wiersz button { flex: none; width: auto; margin: 0; padding: 8px 14px; }
+
+/* FILTRY */
+.filtry { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 10px; }
+.filtr { border: 1px solid var(--border); background: var(--card); border-radius: 12px; padding: 8px 4px; text-align: center; cursor: pointer; font-family: inherit; color: var(--text); }
+.filtr b { display: block; font-size: 20px; line-height: 1.1; }
+.filtr span { font-size: 12px; color: var(--muted); }
+.filtr.on { border-color: var(--brand); box-shadow: inset 0 0 0 1px var(--brand); }
+.filtr[data-f="wydane"] b { color: var(--out); }
+.filtr[data-f="po_terminie"] b { color: var(--late); }
+.filtr[data-f="w_szafce"] b { color: var(--ok); }
+
+/* SIATKA HACZYKÓW */
+.siatka { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 8px; }
+.haczyk {
+  background: var(--card); border-radius: 12px; box-shadow: var(--shadow); padding: 10px 12px; cursor: pointer; text-align: left;
+  border: 0; border-left: 5px solid var(--ok); font-family: inherit; color: var(--text); display: grid; gap: 2px; min-height: 92px; align-content: start;
+}
+.haczyk[data-s="wydany"] { border-left-color: var(--out); background: var(--out-soft); }
+.haczyk[data-s="po_terminie"] { border-left-color: var(--late); background: var(--late-soft); }
+.haczyk-nr { font-size: 22px; font-weight: 800; color: var(--brand); line-height: 1; }
+.haczyk-nazwa { font-weight: 600; font-size: 15px; overflow-wrap: anywhere; }
+.haczyk-stan { font-size: 13px; color: var(--muted); }
+.haczyk[data-s="wydany"] .haczyk-stan { color: var(--out); font-weight: 600; }
+.haczyk[data-s="po_terminie"] .haczyk-stan { color: var(--late); font-weight: 700; }
+.pusto { text-align: center; color: var(--muted); padding: 30px 10px; grid-column: 1 / -1; }
+
+/* ARKUSZ */
+.tlo { position: fixed; inset: 0; background: rgba(0,0,0,.35); z-index: 40; }
+.arkusz {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 41; background: var(--card);
+  border-radius: 18px 18px 0 0; max-height: 90vh; overflow-y: auto; max-width: 640px; margin: 0 auto;
+  padding: 8px max(16px, env(safe-area-inset-right, 16px)) max(20px, env(safe-area-inset-bottom, 20px)) max(16px, env(safe-area-inset-left, 16px));
+  box-shadow: 0 -8px 30px rgba(0,0,0,.2);
+}
+.arkusz-uchwyt { width: 40px; height: 4px; border-radius: 2px; background: var(--border); margin: 0 auto 8px; }
+.ark-nr { font-size: 13px; color: var(--muted); font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+.ark-nazwa { font-size: 22px; font-weight: 800; margin: 2px 0 4px; }
+.ark-info { font-size: 14px; color: var(--muted); margin-bottom: 12px; }
+.stan-box { border-radius: 12px; padding: 12px; margin-bottom: 12px; }
+.stan-box.wydany { background: var(--out-soft); }
+.stan-box.po_terminie { background: var(--late-soft); }
+.stan-box.w_szafce { background: var(--ok-soft); color: var(--ok); font-weight: 600; }
+.stan-box b { font-size: 17px; }
+.sekcja-tytul { font-size: 13px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin: 16px 0 6px; }
+.historia { list-style: none; margin: 0; padding: 0; font-size: 14px; }
+.historia li { padding: 7px 0; border-bottom: 1px solid var(--border); }
+.historia li:last-child { border-bottom: 0; }
+.akcje-dol { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 16px; }
+.potwierdz { background: var(--late-soft); border-radius: 12px; padding: 12px; margin-top: 12px; font-size: 14px; }
+
+/* KONTROLA */
+.kontrola-wiersz { background: var(--card); border-radius: 12px; box-shadow: var(--shadow); padding: 10px 12px; margin-bottom: 6px; display: flex; align-items: center; gap: 10px; }
+.kontrola-wiersz .haczyk-nr { width: 36px; text-align: center; flex: none; }
+.kontrola-wiersz > div { flex: 1; min-width: 0; }
+.przelacznik { display: flex; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; flex: none; }
+.przelacznik button { border: 0; background: #fff; padding: 9px 12px; font-size: 14px; font-family: inherit; cursor: pointer; color: var(--muted); }
+.przelacznik button.on.jest { background: var(--ok); color: #fff; }
+.przelacznik button.on.brak { background: var(--out); color: #fff; }
+.kontrola-wiersz.rozbieznosc { box-shadow: 0 0 0 2px var(--late); }
+.wynik-lista { margin: 8px 0 0; padding-left: 18px; font-size: 15px; }
+
+.toast {
+  position: fixed; left: 50%; bottom: max(20px, env(safe-area-inset-bottom, 20px)); transform: translateX(-50%);
+  background: #1c1917; color: #fff; padding: 10px 18px; border-radius: 22px; font-size: 15px; z-index: 60;
+  max-width: 90vw; box-shadow: 0 6px 20px rgba(0,0,0,.25);
+}
+.icon-btn.small-txt { font-size: 13px; opacity: .85; }
