@@ -1,9 +1,12 @@
 // KLUCZE RM: szafka z numerami haczyków, wydanie i zwrot kluczy, historia, piątkowa kontrola
 // Dane w bazie Zadań RM (Supabase, to samo logowanie). Bez config.js albo z ?proba: tryb próbny w tej przeglądarce.
 // Klucz po terminie: baza sama tworzy zadanie w Zadaniach RM (setup.sql, prywatne.klucze_po_terminie).
-const WERSJA = 'v1';
+const WERSJA = 'v2';
 
 const PO_CO = ['Prezentacja', 'Sesja zdjęć', 'Fachowiec, ekipa', 'Właściciel', 'Liczniki, odczyt'];
+const PO_CO_BIURO = ['Otwieram biuro', 'Zamykam biuro', 'Poczta', 'Sprzątanie', 'Fachowiec, ekipa'];
+// szafka podzielona na dwa działy (kolumna rodzaj w tabeli klucze)
+const DZIALY = [['nieruchomosc', '🏠 Nieruchomości'], ['biuro', '🏢 Biuro']];
 const SPOZA = '__spoza__';
 
 const $ = (s, el = document) => el.querySelector(s);
@@ -116,7 +119,7 @@ const cfg = window.RM_CONFIG || {};
 const DB = (cfg.supabaseUrl && !/[?&]proba/.test(location.search)) ? magazynSupabase(cfg) : magazynProbny();
 
 // ===================== STAN =====================
-const S = { user: null, profil: null, admin: false, osoby: [], klucze: [], otwarte: {}, filtr: 'wszystkie', szukaj: '', kontrola: {}, otwartyKlucz: null };
+const S = { user: null, profil: null, admin: false, osoby: [], klucze: [], otwarte: {}, filtr: 'wszystkie', dzial: (() => { try { return localStorage.getItem('kl-dzial') === 'biuro' ? 'biuro' : 'nieruchomosc'; } catch (e) { return 'nieruchomosc'; } })(), szukaj: '', kontrola: {}, otwartyKlucz: null };
 const imie = (id) => (S.osoby.find(o => o.id === id)?.imie) || 'ktoś z zespołu';
 const ktoMa = (w) => w.komu ? imie(w.komu) : w.komu_obcy;
 function stan(k) {
@@ -185,17 +188,22 @@ function rysujSzafke() {
   box.hidden = !moje.length;
   box.innerHTML = moje.length ? `<div class="moje-tytul">Masz u siebie: ${moje.length}</div>` + moje.map(k => {
     const w = S.otwarte[k.id];
-    return `<div class="moje-wiersz"><div><b>${k.haczyk}</b> · ${esc(k.nazwa)}<div class="small ${stan(k) === 'po_terminie' ? 'err' : 'muted'}" style="margin:0">ma wrócić ${terminTxt(w.zwrot_do)}</div></div>
+    return `<div class="moje-wiersz"><div><b>${k.haczyk}</b> · ${esc(k.nazwa)}${k.rodzaj === 'biuro' ? ' <span class="muted small">biuro</span>' : ''}<div class="small ${stan(k) === 'po_terminie' ? 'err' : 'muted'}" style="margin:0">ma wrócić ${terminTxt(w.zwrot_do)}</div></div>
       <button class="btn btn-ok" data-oddaj="${w.id}">Oddaję</button></div>`;
   }).join('') : '';
 
-  const liczby = { wszystkie: S.klucze.length, w_szafce: 0, wydane: 0, po_terminie: 0 };
-  S.klucze.forEach(k => { const s = stan(k); if (s === 'w_szafce') liczby.w_szafce++; else { liczby.wydane++; if (s === 'po_terminie') liczby.po_terminie++; } });
+  $('#dzialy').innerHTML = DZIALY.map(([d, n]) => {
+    const kl = S.klucze.filter(k => k.rodzaj === d), late = kl.filter(k => stan(k) === 'po_terminie').length;
+    return `<button class="${S.dzial === d ? 'on' : ''}" data-dzial="${d}">${n} <span class="dzial-ile">${kl.length}</span>${late ? `<span class="dzial-late">${late}</span>` : ''}</button>`;
+  }).join('');
+  const wDziale = S.klucze.filter(k => k.rodzaj === S.dzial);
+  const liczby = { wszystkie: wDziale.length, w_szafce: 0, wydane: 0, po_terminie: 0 };
+  wDziale.forEach(k => { const s = stan(k); if (s === 'w_szafce') liczby.w_szafce++; else { liczby.wydane++; if (s === 'po_terminie') liczby.po_terminie++; } });
   const F = [['wszystkie', 'wszystkie'], ['w_szafce', 'w szafce'], ['wydane', 'wydane'], ['po_terminie', 'po terminie']];
   $('#filtry').innerHTML = F.map(([k, n]) => `<button class="filtr${S.filtr === k ? ' on' : ''}" data-f="${k}"><b>${liczby[k]}</b><span>${n}</span></button>`).join('');
 
   const q = bezOgonkow(S.szukaj.trim());
-  const lista = S.klucze.filter(k => {
+  const lista = wDziale.filter(k => {
     const s = stan(k);
     if (S.filtr === 'w_szafce' && s !== 'w_szafce') return false;
     if (S.filtr === 'wydane' && s === 'w_szafce') return false;
@@ -208,8 +216,13 @@ function rysujSzafke() {
     const opis = s === 'w_szafce' ? 'w szafce' : `${esc(ktoMa(w))}, ${s === 'po_terminie' ? 'miał wrócić ' + terminTxt(w.zwrot_do) : 'od ' + kiedyTxt(w.kiedy).replace(/ \d\d:\d\d$/, '')}`;
     return `<button class="haczyk" data-s="${s}" data-k="${k.id}"><span class="haczyk-nr">${k.haczyk}</span>
       <span class="haczyk-nazwa">${esc(k.nazwa)}${k.komplet ? ` <span class="muted small">${esc(k.komplet)}</span>` : ''}</span><span class="haczyk-stan">${opis}</span></button>`;
-  }).join('') : `<div class="pusto">${S.klucze.length ? 'Nic nie pasuje' : 'Szafka jest pusta. Przyjmij pierwsze klucze przyciskiem poniżej.'}</div>`;
+  }).join('') : `<div class="pusto">${wDziale.length ? 'Nic nie pasuje' : `Brak kluczy ${S.dzial === 'biuro' ? 'do biura' : 'do nieruchomości'}. Przyjmij je przyciskiem poniżej.`}</div>`;
 }
+$('#dzialy').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-dzial]'); if (!b || b.dataset.dzial === S.dzial) return;
+  S.dzial = b.dataset.dzial; S.filtr = 'wszystkie'; try { localStorage.setItem('kl-dzial', S.dzial); } catch (err) {}
+  rysujSzafke();
+});
 $('#filtry').addEventListener('click', (e) => { const b = e.target.closest('[data-f]'); if (b) { S.filtr = b.dataset.f; rysujSzafke(); } });
 $('#szukaj').addEventListener('input', (e) => { S.szukaj = e.target.value; rysujSzafke(); });
 $('#siatka').addEventListener('click', (e) => { const b = e.target.closest('[data-k]'); if (b) otworzKlucz(S.klucze.find(k => k.id === b.dataset.k)); });
@@ -244,6 +257,7 @@ async function rysujArkusz(k, tryb) {
       <label>Nazwa (adres) <input type="text" id="e-nazwa" value="${esc(k.nazwa)}" maxlength="120" required></label>
       <div class="grid2"><label>Nr haczyka <input type="number" id="e-haczyk" value="${k.haczyk}" min="1" max="200" required></label>
       <label>Komplet <input type="text" id="e-komplet" value="${esc(k.komplet)}" maxlength="40" placeholder="np. komplet 2 z 2"></label></div>
+      <label>Dział <select id="e-rodzaj">${DZIALY.map(([d, n]) => `<option value="${d}"${k.rodzaj === d ? ' selected' : ''}>${n}</option>`).join('')}</select></label>
       <label>Czyje klucze (właściciel) <input type="text" id="e-czyje" value="${esc(k.czyje)}" maxlength="120"></label>
       <label>Uwagi <input type="text" id="e-uwagi" value="${esc(k.uwagi)}" maxlength="300" placeholder="np. 3 klucze + pilot do bramy"></label>
       <button class="btn btn-main" type="submit">Zapisz</button>
@@ -262,7 +276,7 @@ async function rysujArkusz(k, tryb) {
       ${W.komu === SPOZA ? `<div class="grid2"><label>Kto (imię, kim jest) <input type="text" id="w-obcy" maxlength="80" placeholder="np. Marek, hydraulik" value="${esc(W.obcy || '')}"></label>
         <label>Telefon <input type="tel" id="w-tel" maxlength="20" value="${esc(W.tel || '')}"></label></div>` : ''}
       <div class="sekcja-tytul">Po co (nie musisz)</div>
-      <div class="chips">${PO_CO.map(p => `<button type="button" class="chip${W.poCo === p ? ' on' : ''}" data-poco="${esc(p)}">${esc(p)}</button>`).join('')}</div>
+      <div class="chips">${(k.rodzaj === 'biuro' ? PO_CO_BIURO : PO_CO).map(p => `<button type="button" class="chip${W.poCo === p ? ' on' : ''}" data-poco="${esc(p)}">${esc(p)}</button>`).join('')}</div>
       <div class="sekcja-tytul">Wraca</div>
       <div class="chips">${[['Dziś', dzis()], ['Jutro', zaDni(1)], ['Za 2 dni', zaDni(2)]].map(([n, d]) => `<button type="button" class="chip${W.zwrot === d ? ' on' : ''}" data-zwrot="${d}">${n}</button>`).join('')}
         <input type="date" id="w-data" value="${W.zwrot}" min="${dzis()}" style="width:auto;margin:0;padding:7px 10px"></div>
@@ -277,10 +291,11 @@ async function rysujArkusz(k, tryb) {
 
   h += `<div class="sekcja-tytul">Historia</div><ul class="historia" id="ark-historia"><li class="muted">Wczytuję…</li></ul>`;
   if (tryb === 'archiwizuj') {
-    h += `<div class="potwierdz">Klucze wracają do właściciela, haczyk ${k.haczyk} się zwolni. Historia zostaje w Archiwum.
-      <div class="akcje-dol"><button class="link" style="color:var(--late);font-weight:700" data-akcja="archiwizuj-tak">Tak, oddane właścicielowi</button><button class="link" data-akcja="anuluj">Zostaw</button></div></div>`;
+    const bi = k.rodzaj === 'biuro';
+    h += `<div class="potwierdz">${bi ? 'Klucz znika z szafki' : 'Klucze wracają do właściciela'}, haczyk ${k.haczyk} się zwolni. Historia zostaje w Archiwum.
+      <div class="akcje-dol"><button class="link" style="color:var(--late);font-weight:700" data-akcja="archiwizuj-tak">${bi ? 'Tak, zdejmij z szafki' : 'Tak, oddane właścicielowi'}</button><button class="link" data-akcja="anuluj">Zostaw</button></div></div>`;
   } else {
-    h += `<div class="akcje-dol"><button class="link" data-akcja="edytuj">Edytuj</button>${s === 'w_szafce' ? '<button class="link" data-akcja="archiwizuj">Oddane właścicielowi</button>' : ''}</div>`;
+    h += `<div class="akcje-dol"><button class="link" data-akcja="edytuj">Edytuj</button>${s === 'w_szafce' ? `<button class="link" data-akcja="archiwizuj">${k.rodzaj === 'biuro' ? 'Zdejmij z szafki' : 'Oddane właścicielowi'}</button>` : ''}</div>`;
   }
   $('#ark-tresc').innerHTML = h;
 
@@ -336,7 +351,7 @@ $('#arkusz').addEventListener('submit', async (e) => {
       zamknijArkusz(); await odswiez();
     }
     if (e.target.id === 'f-edycja') {
-      const zm = { nazwa: $('#e-nazwa').value.trim(), haczyk: Number($('#e-haczyk').value), komplet: $('#e-komplet').value.trim(), czyje: $('#e-czyje').value.trim(), uwagi: $('#e-uwagi').value.trim() };
+      const zm = { nazwa: $('#e-nazwa').value.trim(), haczyk: Number($('#e-haczyk').value), komplet: $('#e-komplet').value.trim(), czyje: $('#e-czyje').value.trim(), uwagi: $('#e-uwagi').value.trim(), rodzaj: $('#e-rodzaj').value };
       if (!zm.nazwa || !(zm.haczyk > 0)) { toast('Uzupełnij nazwę i numer haczyka'); return; }
       await DB.zmienKlucz(k.id, zm); toast('Zapisano'); await odswiez(); rysujArkusz(S.klucze.find(x => x.id === k.id));
     }
@@ -346,7 +361,7 @@ $('#arkusz').addEventListener('submit', async (e) => {
 
 // ===================== PRZYJĘCIE NOWYCH KLUCZY =====================
 $('#btn-przyjmij').addEventListener('click', () => {
-  S.otwartyKlucz = null; S.przyjecie = { rodzaj: 'nieruchomosc', ile: 1 };
+  S.otwartyKlucz = null; S.przyjecie = { rodzaj: S.dzial, ile: 1 };
   rysujPrzyjecie(); otworzArkusz(); setTimeout(() => $('#p-nazwa')?.focus(), 80);
 });
 function wolneHaczyki(n) {
@@ -359,7 +374,7 @@ function rysujPrzyjecie() {
   $('#ark-nr').textContent = 'Przyjęcie kluczy';
   $('#ark-tresc').innerHTML = `<div class="ark-nazwa" id="ark-tytul">Nowe klucze do szafki</div>
     <form id="f-przyjmij">
-    <label>Adres albo nazwa <input type="text" id="p-nazwa" maxlength="120" value="${esc(P.nazwa || '')}" placeholder="np. Agatowa 19" required></label>
+    <label>Adres albo nazwa <input type="text" id="p-nazwa" maxlength="120" value="${esc(P.nazwa || '')}" placeholder="${P.rodzaj === 'biuro' ? 'np. Biuro 5, piwnica' : 'np. Agatowa 19'}" required></label>
     <div class="chips"><button type="button" class="chip${P.rodzaj === 'nieruchomosc' ? ' on' : ''}" data-rodzaj="nieruchomosc">Nieruchomość</button>
       <button type="button" class="chip${P.rodzaj === 'biuro' ? ' on' : ''}" data-rodzaj="biuro">Biuro</button></div>
     <label>Czyje klucze (właściciel) <input type="text" id="p-czyje" maxlength="120" value="${esc(P.czyje || '')}"></label>
@@ -387,6 +402,7 @@ $('#arkusz').addEventListener('submit', async (e) => {
   try {
     await DB.dodajKlucze(hz.map((h, i) => ({ haczyk: h, nazwa, rodzaj: P.rodzaj, czyje: $('#p-czyje').value.trim(), uwagi: $('#p-uwagi').value.trim(),
       komplet: P.ile > 1 ? `komplet ${i + 1} z ${P.ile}` : '', przyjete: dzis() })));
+    if (P.rodzaj !== S.dzial) { S.dzial = P.rodzaj; try { localStorage.setItem('kl-dzial', S.dzial); } catch (e) {} }
     toast(`Przyjęte. Powieś na haczyk${hz.length > 1 ? 'ach' : 'u'} ${hz.join(', ')}`, 5000);
     S.przyjecie = null; zamknijArkusz(); await odswiez();
   } catch (err) { toast(err.message, 5000); await odswiez(); rysujPrzyjecie(); }
@@ -404,12 +420,16 @@ async function startKontroli() {
   } catch (e) {}
 }
 function rysujKontrole() {
-  $('#kontrola-lista').innerHTML = S.klucze.map(k => {
+  const wiersz = (k) => {
     const powinien = stan(k) === 'w_szafce', jest = S.kontrola[k.id];
     const w = S.otwarte[k.id];
     return `<div class="kontrola-wiersz${powinien !== jest ? ' rozbieznosc' : ''}"><span class="haczyk-nr">${k.haczyk}</span>
       <div><div style="font-weight:600">${esc(k.nazwa)}${k.komplet ? ` <span class="muted small">${esc(k.komplet)}</span>` : ""}</div><div class="small muted">${powinien ? 'powinien wisieć' : 'wydany: ' + esc(ktoMa(w))}</div></div>
       <div class="przelacznik"><button class="${jest ? 'on jest' : ''}" data-kk="${k.id}" data-v="1">jest</button><button class="${!jest ? 'on brak' : ''}" data-kk="${k.id}" data-v="0">brak</button></div></div>`;
+  };
+  $('#kontrola-lista').innerHTML = DZIALY.map(([d, n]) => {
+    const kl = S.klucze.filter(k => k.rodzaj === d);
+    return kl.length ? `<div class="sekcja-tytul">${n}</div>` + kl.map(wiersz).join('') : '';
   }).join('') || '<div class="pusto">Szafka jest pusta</div>';
 }
 $('#kontrola-lista').addEventListener('click', (e) => { const b = e.target.closest('[data-kk]'); if (b) { S.kontrola[b.dataset.kk] = b.dataset.v === '1'; rysujKontrole(); } });
@@ -439,7 +459,7 @@ async function rysujArchiwum() {
   const box = $('#archiwum-lista'); box.innerHTML = '<div class="pusto">Wczytuję…</div>';
   try {
     const lista = await DB.klucze(false);
-    box.innerHTML = lista.length ? lista.map(k => `<div class="card"><div class="row-between"><b>${esc(k.nazwa)}</b><span class="muted small">był na haczyku ${k.haczyk}</span></div>
+    box.innerHTML = lista.length ? lista.map(k => `<div class="card"><div class="row-between"><b>${esc(k.nazwa)}</b><span class="muted small">${k.rodzaj === 'biuro' ? 'biuro · ' : ''}był na haczyku ${k.haczyk}</span></div>
       <div class="small muted">${[k.komplet, k.czyje ? 'właściciel: ' + k.czyje : '', k.przyjete ? 'przyjęte ' + dataPL(k.przyjete) : '', k.oddane_wlascicielowi ? 'oddane ' + dataPL(k.oddane_wlascicielowi) : ''].filter(Boolean).map(esc).join(' · ')}</div></div>`).join('')
       : '<div class="pusto">Archiwum jest puste. Trafiają tu klucze oddane właścicielom.</div>';
   } catch (e) { box.innerHTML = `<div class="pusto">${esc(e.message)}</div>`; }
