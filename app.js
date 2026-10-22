@@ -1,13 +1,16 @@
 // KLUCZE RM: szafka z numerami haczyków, wydanie i zwrot kluczy, historia, piątkowa kontrola
 // Dane w bazie Zadań RM (Supabase, to samo logowanie). Bez config.js albo z ?proba: tryb próbny w tej przeglądarce.
 // Klucz po terminie: baza sama tworzy zadanie w Zadaniach RM (setup.sql, prywatne.klucze_po_terminie).
-const WERSJA = 'v2';
+const WERSJA = 'v3';
 
 const PO_CO = ['Prezentacja', 'Sesja zdjęć', 'Fachowiec, ekipa', 'Właściciel', 'Liczniki, odczyt'];
 const PO_CO_BIURO = ['Otwieram biuro', 'Zamykam biuro', 'Poczta', 'Sprzątanie', 'Fachowiec, ekipa'];
 // szafka podzielona na dwa działy (kolumna rodzaj w tabeli klucze)
 const DZIALY = [['nieruchomosc', '🏠 Nieruchomości'], ['biuro', '🏢 Biuro']];
 const SPOZA = '__spoza__';
+// komu przekazane klucze przy zdjęciu do archiwum (kolumna przekazane_powod), biuro zawsze 'zdjete'
+const PRZEKAZANIE = [['wlasciciel', 'Zwrócone właścicielowi'], ['nabywca', 'Nowemu nabywcy'], ['najemca', 'Najemcy']];
+const PRZEKAZANIE_TXT = { wlasciciel: 'zwrócone właścicielowi', nabywca: 'przekazane nabywcy', najemca: 'przekazane najemcy', zdjete: 'zdjęte z szafki' };
 
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
@@ -291,11 +294,15 @@ async function rysujArkusz(k, tryb) {
 
   h += `<div class="sekcja-tytul">Historia</div><ul class="historia" id="ark-historia"><li class="muted">Wczytuję…</li></ul>`;
   if (tryb === 'archiwizuj') {
-    const bi = k.rodzaj === 'biuro';
-    h += `<div class="potwierdz">${bi ? 'Klucz znika z szafki' : 'Klucze wracają do właściciela'}, haczyk ${k.haczyk} się zwolni. Historia zostaje w Archiwum.
-      <div class="akcje-dol"><button class="link" style="color:var(--late);font-weight:700" data-akcja="archiwizuj-tak">${bi ? 'Tak, zdejmij z szafki' : 'Tak, oddane właścicielowi'}</button><button class="link" data-akcja="anuluj">Zostaw</button></div></div>`;
+    const bi = k.rodzaj === 'biuro', A = S.archiwum;
+    h += `<div class="potwierdz">${bi ? '' : `<div class="sekcja-tytul" style="margin-top:0">Komu przekazane</div>
+      <div class="chips">${PRZEKAZANIE.map(([p, n]) => `<button type="button" class="chip${A.powod === p ? ' on' : ''}" data-powod="${p}">${n}</button>`).join('')}</div>
+      <label>${A.powod === 'wlasciciel' ? 'Kto odebrał' : A.powod === 'nabywca' ? 'Nabywca' : 'Najemca'} (nie musisz) <input type="text" id="a-komu" maxlength="120" value="${esc(A.komu)}" placeholder="imię i nazwisko"></label>`}
+      <label>Kiedy <input type="date" id="a-data" value="${A.data}" max="${dzis()}" style="width:auto"></label>
+      ${w ? `Klucz jest teraz u: <b>${esc(ktoMa(w))}</b>, wydanie zamknie się samo. ` : ''}${bi ? 'Klucz znika z szafki' : 'Klucze schodzą z szafki'}, haczyk ${k.haczyk} się zwolni. Historia zostaje w Archiwum.
+      <div class="akcje-dol"><button class="link" style="color:var(--late);font-weight:700" data-akcja="archiwizuj-tak">${bi ? 'Tak, zdejmij z szafki' : 'Tak, przenieś do archiwum'}</button><button class="link" data-akcja="anuluj">Zostaw</button></div></div>`;
   } else {
-    h += `<div class="akcje-dol"><button class="link" data-akcja="edytuj">Edytuj</button>${s === 'w_szafce' ? `<button class="link" data-akcja="archiwizuj">${k.rodzaj === 'biuro' ? 'Zdejmij z szafki' : 'Oddane właścicielowi'}</button>` : ''}</div>`;
+    h += `<div class="akcje-dol"><button class="link" data-akcja="edytuj">Edytuj</button><button class="link" data-akcja="archiwizuj">${k.rodzaj === 'biuro' ? 'Zdejmij z szafki' : 'Przekazane (do archiwum)'}</button></div>`;
   }
   $('#ark-tresc').innerHTML = h;
 
@@ -317,6 +324,7 @@ $('#arkusz').addEventListener('click', async (e) => {
   }
   if (b.dataset.poco !== undefined) { zapamietajPola(); S.wydanie.poCo = S.wydanie.poCo === b.dataset.poco ? '' : b.dataset.poco; rysujArkusz(k); return; }
   if (b.dataset.zwrot) { zapamietajPola(); S.wydanie.zwrot = b.dataset.zwrot; rysujArkusz(k); return; }
+  if (b.dataset.powod) { zapamietajArchiwum(); S.archiwum.powod = b.dataset.powod; rysujArkusz(k, 'archiwizuj'); return; }
   const a = b.dataset.akcja; if (!a) return;
   const w = S.otwarte[k.id];
   if (a === 'oddany') oddaj(w.id);
@@ -327,14 +335,22 @@ $('#arkusz').addEventListener('click', async (e) => {
   }
   if (a === 'edytuj') rysujArkusz(k, 'edycja');
   if (a === 'anuluj') rysujArkusz(k);
-  if (a === 'archiwizuj') rysujArkusz(k, 'archiwizuj');
+  if (a === 'archiwizuj') { S.archiwum = { powod: 'wlasciciel', komu: k.czyje || '', data: dzis() }; rysujArkusz(k, 'archiwizuj'); }
   if (a === 'archiwizuj-tak') {
-    try { await DB.zmienKlucz(k.id, { aktywny: false, oddane_wlascicielowi: dzis() }); toast(`Haczyk ${k.haczyk} jest wolny`); zamknijArkusz(); await odswiez(); }
-    catch (err) { toast('Nie zapisało się: ' + err.message, 5000); }
+    zapamietajArchiwum();
+    const A = S.archiwum, bi = k.rodzaj === 'biuro';
+    try {
+      await DB.zmienKlucz(k.id, { aktywny: false, oddane_wlascicielowi: A.data || dzis(), przekazane_powod: bi ? 'zdjete' : A.powod, przekazane_komu: bi ? '' : A.komu.trim() });
+      // klucz wydany w chwili przekazania: zamykamy wydanie, żeby nie wisiało po terminie
+      if (w) await DB.zmienWydanie(w.id, { zwrocono: new Date().toISOString(), przyjal: S.profil.id });
+      toast(`${bi ? 'Zdjęte z szafki' : PRZEKAZANIE_TXT[A.powod][0].toUpperCase() + PRZEKAZANIE_TXT[A.powod].slice(1)}. Haczyk ${k.haczyk} jest wolny`, 4000);
+      zamknijArkusz(); await odswiez();
+    } catch (err) { toast('Nie zapisało się: ' + err.message, 5000); }
   }
 });
 $('#arkusz').addEventListener('change', (e) => { if (e.target.id === 'w-data' && e.target.value) { zapamietajPola(); S.wydanie.zwrot = e.target.value; rysujArkusz(S.klucze.find(x => x.id === S.otwartyKlucz)); } });
 function zapamietajPola() { if ($('#w-obcy')) S.wydanie.obcy = $('#w-obcy').value; if ($('#w-tel')) S.wydanie.tel = $('#w-tel').value; }
+function zapamietajArchiwum() { if ($('#a-komu')) S.archiwum.komu = $('#a-komu').value; if ($('#a-data')?.value) S.archiwum.data = $('#a-data').value; }
 
 $('#arkusz').addEventListener('submit', async (e) => {
   e.preventDefault();
@@ -455,13 +471,16 @@ $('#kontrola-wynik').addEventListener('click', async (e) => {
 });
 
 // ===================== ARCHIWUM =====================
+// wpisy sprzed v3 nie mają powodu: nieruchomość = zwrot właścicielowi, biuro = zdjęte
+const przekazaneTxt = (k) => PRZEKAZANIE_TXT[k.przekazane_powod || (k.rodzaj === 'biuro' ? 'zdjete' : 'wlasciciel')];
 async function rysujArchiwum() {
   const box = $('#archiwum-lista'); box.innerHTML = '<div class="pusto">Wczytuję…</div>';
   try {
     const lista = await DB.klucze(false);
     box.innerHTML = lista.length ? lista.map(k => `<div class="card"><div class="row-between"><b>${esc(k.nazwa)}</b><span class="muted small">${k.rodzaj === 'biuro' ? 'biuro · ' : ''}był na haczyku ${k.haczyk}</span></div>
-      <div class="small muted">${[k.komplet, k.czyje ? 'właściciel: ' + k.czyje : '', k.przyjete ? 'przyjęte ' + dataPL(k.przyjete) : '', k.oddane_wlascicielowi ? 'oddane ' + dataPL(k.oddane_wlascicielowi) : ''].filter(Boolean).map(esc).join(' · ')}</div></div>`).join('')
-      : '<div class="pusto">Archiwum jest puste. Trafiają tu klucze oddane właścicielom.</div>';
+      <div class="small" style="margin:4px 0 2px"><b>${esc(przekazaneTxt(k))}</b>${k.przekazane_komu ? ': ' + esc(k.przekazane_komu) : ''}${k.oddane_wlascicielowi ? ' · ' + dataPL(k.oddane_wlascicielowi) : ''}</div>
+      <div class="small muted">${[k.komplet, k.czyje ? 'właściciel: ' + k.czyje : '', k.przyjete ? 'przyjęte ' + dataPL(k.przyjete) : ''].filter(Boolean).map(esc).join(' · ')}</div></div>`).join('')
+      : '<div class="pusto">Archiwum jest puste. Trafiają tu klucze zwrócone właścicielom, przekazane nabywcom i najemcom.</div>';
   } catch (e) { box.innerHTML = `<div class="pusto">${esc(e.message)}</div>`; }
 }
 

@@ -3,7 +3,7 @@
 PWA szafki z kluczami (zbudowana 16.10.2026). Numer = haczyk w szafce, na zawieszce tylko numer, adres wyłącznie w aplikacji.
 
 - **Szafka:** dwa działy, 🏠 Nieruchomości i 🏢 Biuro (od v2, 19.10.2026, kolumna `rodzaj`, numeracja haczyków wspólna); w każdym siatka haczyków (zielony w szafce, pomarańczowy wydany, czerwony po terminie), filtry, szukanie, „Masz u siebie” z przyciskiem Oddaję.
-- **Karta klucza:** wydanie (komu: ktoś z zespołu albo spoza biura z telefonem; po co; wraca dziś/jutro/za 2 dni/data), zwrot jednym kliknięciem, przedłużenie, historia, edycja, „Oddane właścicielowi” (archiwum, haczyk wolny).
+- **Karta klucza:** wydanie (komu: ktoś z zespołu albo spoza biura z telefonem; po co; wraca dziś/jutro/za 2 dni/data), zwrot jednym kliknięciem, przedłużenie, historia, edycja, „Przekazane (do archiwum)”: zwrócone właścicielowi, nowemu nabywcy albo najemcy, z nazwiskiem i datą, także gdy klucz jest akurat wydany (wydanie zamyka się samo); haczyk wolny (od v3, 22.10.2026, kolumny `przekazane_powod`, `przekazane_komu` z `v3-przekazanie.sql`).
 - **Przyjęcie:** adres, właściciel, liczba kompletów; każdy komplet dostaje najniższy wolny haczyk.
 - **Kontrola (piątek 14:45):** jest/brak przy każdym haczyku, różnice na czerwono, zapis w `klucze_kontrole`.
 - **Po terminie:** pg_cron `rm-klucze` (8:00 i 13:00) tworzy zadanie w Zadaniach RM (z powiadomieniem); zwrot klucza zamyka zadanie sam (trigger).
